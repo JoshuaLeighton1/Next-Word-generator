@@ -5,7 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import random
 import string
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 
 #set random seed for reproducibility
@@ -45,7 +45,7 @@ vocab_size = len(vocab)
 #create sequence for training
 
 #number of words in each input sentence
-sequence_length = 5 
+sequence_length = 8
 sequences = []
 for i in range(sequence_length, len(words)):
     seq = words[i-sequence_length:i]
@@ -61,6 +61,11 @@ for seq, target in sequences:
     target_idx = word_to_idx[target]
     #append to sequences array
     sequences_idx.append((seq_idx, target_idx))
+
+#split into training and validation sets (80/20)
+train_size = int(0.8 * len(sequences_idx))
+train_sequences = sequences_idx[:train_size]
+val_sequences = sequences_idx[train_size:]
 
 
 # Create a PyTorch dataset
@@ -80,7 +85,7 @@ class TextDataSet(Dataset):
 
 #pass the sequences_idx array as an arg for the TextDataSet Object
 dataset = TextDataSet(sequences_idx)
-batch_size = 32
+batch_size = 64
 #DataLoader represents an iterable dataset
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
@@ -107,15 +112,15 @@ class RNNModel(nn.Module):
     
 #set hyper parameters
 
-embedding_dim = 100
-hidden_size =  128
+embedding_dim = 200
+hidden_size =  256
 model = RNNModel(vocab_size, embedding_dim, hidden_size)
 
 #train with CrossEntropyLoss function for classification
 criterion = nn.CrossEntropyLoss()
 #Adam optimizer with learning rate 0.001
 optimizer =optim.Adam(model.parameters(), lr=0.001)
-num_epochs = 20
+num_epochs = 30
 #track losses for plotting
 epoch_losses=[]
 
@@ -176,8 +181,8 @@ def generate_text(model, start_seq, num_words):
 
 
 try: 
-    start_seq = ['i', 'like', 'to', 'learn', 'about']
-    generated_text = generate_text(model, start_seq, 10)
+    start_seq = ['i', 'am', 'a', 'human', 'and']
+    generated_text = generate_text(model, start_seq, 15)
     print(f"generated_text: {generated_text}")
 
 except ValueError as e:
