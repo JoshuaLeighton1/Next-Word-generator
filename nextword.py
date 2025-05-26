@@ -98,7 +98,7 @@ model = RNNModel(vocab_size, embedding_dim, hidden_size)
 criterion = nn.CrossEntropyLoss()
 #Adam optimizer with learning rate 0.001
 optimizer =optim.Adam(model.parameters(), lr=0.001)
-num_epochs = 10
+num_epochs = 15
 
 for epoch in range(num_epochs):
     model.train()
