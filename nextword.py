@@ -81,13 +81,15 @@ class TextDataSet(Dataset):
         seq, target = self.sequences[idx]
         return torch.tensor(seq), torch.tensor(target)
 
-#Create DataLoader for batching 
+#Create DataLoader for batching  and training/validation 
 
 #pass the sequences_idx array as an arg for the TextDataSet Object
-dataset = TextDataSet(sequences_idx)
-batch_size = 64
+train_dataset = TextDataSet(train_sequences)
+val_dataset = TextDataSet(val_sequences)
+batch_size = 64 
 #DataLoader represents an iterable dataset
-dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
 #Define the RNN Model
 
@@ -116,18 +118,20 @@ embedding_dim = 200
 hidden_size =  256
 model = RNNModel(vocab_size, embedding_dim, hidden_size)
 
-#train with CrossEntropyLoss function for classification
+#train set up with CrossEntropyLoss function for classification
 criterion = nn.CrossEntropyLoss()
 #Adam optimizer with learning rate 0.001
 optimizer =optim.Adam(model.parameters(), lr=0.001)
 num_epochs = 30
+
 #track losses for plotting
-epoch_losses=[]
+train_losses=[]
+val_losses=[]
 
 for epoch in range(num_epochs):
     model.train()   
-    total_loss = 0
-    for seq, target in dataloader:
+    total_train_loss = 0
+    for seq, target in train_dataloader:
         seq, target = seq.to(device), target.to(device)
         #reset gradients
         optimizer.zero_grad()
@@ -139,16 +143,31 @@ for epoch in range(num_epochs):
         loss.backward()
         #update weights
         optimizer.step()
-        total_loss += loss.item()
+        total_train_loss += loss.item()
     #calculate average loss to be total loss / length of the dataset iterable
-    avg_loss = total_loss / len(dataloader)
-    epoch_losses.append(avg_loss)
-    print(f'Epoch {epoch+1}, Loss: {avg_loss}')
+    avg_train_loss = total_train_loss / len(train_dataloader)
+    train_losses.append(avg_train_loss)
+
+    #validation
+    model.eval()
+    total_val_loss = 0
+    with torch.no_grad():
+        for seq, target in val_dataloader:
+            seq, target = seq.to(device), target.to(device)
+            output=model(seq)
+            loss = criterion(output, target)
+            total_val_loss += loss.item()
+    avg_val_loss = total_val_loss / len(val_dataloader)
+    val_losses.append(avg_val_loss)
+
+
+    print(f'Epoch {epoch+1}, Train Loss: {avg_train_loss:.4f}, Validation Loss: {avg_val_loss:.4f}')
 
 #Plot loss function 
-plt.figure(figsize=(8,6))
-plt.plot(range(1, num_epochs+1), epoch_losses, '-b', label='Training loss')
-plt.title('Training loss over Epochs')
+plt.figure(figsize=(10,6))
+plt.plot(range(1, num_epochs+1), train_losses, '-b', label='Training loss')
+plt.plot(range(1, num_epochs+1), train_losses, 'r-', label='Validation loss')
+plt.title('Training and validation loss over Epochs')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.grid(True)
