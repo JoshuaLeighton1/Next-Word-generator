@@ -14,7 +14,7 @@ np.random.seed(42)
 random.seed(42)
 
 #check for GPU availability
-device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
+device = torch.device('mps' if torch.backends.mps.is_available() else 'cuda' if torch.cuda.is_available() else 'cpu')
 print(f"using device {device}")
 
 
@@ -39,13 +39,15 @@ words = text.split()
 
 #build vocabulary: map words to unique indices
 vocab = set(words)
+#maps each word to a unique integer
 word_to_idx = {word: idx for idx, word in enumerate(vocab)}
+#reverse mapping for decoding maps idexes back to their words
 idx_to_word = {idx: word for word, idx in word_to_idx.items()}
 vocab_size = len(vocab)
 #create sequence for training
 
 #number of words in each input sentence
-sequence_length = 8
+sequence_length = 12
 sequences = []
 for i in range(sequence_length, len(words)):
     seq = words[i-sequence_length:i]
@@ -56,7 +58,7 @@ for i in range(sequence_length, len(words)):
 #convert sentences to indices
 sequences_idx=[]
 for seq, target in sequences:
-    #assigns the words index to the seq index
+    #assigns the words index to the seq index making the words numerical for processing
     seq_idx = [word_to_idx[word] for word in seq]
     target_idx = word_to_idx[target]
     #append to sequences array
@@ -71,21 +73,22 @@ val_sequences = sequences_idx[train_size:]
 # Create a PyTorch dataset
 
 class TextDataSet(Dataset):
-    def __init__(self, sequences):
+    def __init__(self, sequences, device):
         self.sequences = sequences
+        self.device = device
 
     def __len__(self):
         return len(self.sequences)
     
     def __getitem__(self, idx):
         seq, target = self.sequences[idx]
-        return torch.tensor(seq), torch.tensor(target)
+        return torch.tensor(seq, dtype=torch.long, device=self.device), torch.tensor(target, dtype=torch.long, device=self.device)
 
 #Create DataLoader for batching  and training/validation 
 
 #pass the sequences_idx array as an arg for the TextDataSet Object
-train_dataset = TextDataSet(train_sequences)
-val_dataset = TextDataSet(val_sequences)
+train_dataset = TextDataSet(train_sequences, device)
+val_dataset = TextDataSet(val_sequences, device)
 batch_size = 64 
 #DataLoader represents an iterable dataset
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -97,14 +100,18 @@ val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 class RNNModel(nn.Module):
     def __init__(self, vocab_size, embedding_dim, hidden_size):
         super(RNNModel, self).__init__()
+        #converts word indices to dense vectors of size embedding_dim
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        #processes sequences outputs hidden sstates
         self.rnn = nn.RNN(embedding_dim, hidden_size, batch_first=True)
+        #maps final hidden state to vocabulary sized predictions
         self.fc = nn.Linear(hidden_size, vocab_size)
 
     def forward(self, x):
-        #convert word indices to embeddings
+
+        #shape becomes (batch_size, sequence_length, embedding_dim)
         embedded = self.embedding(x)
-        #RNN processes the sequence
+        #RNN processes the sequence and outputs for all time steps and hidden states
         output, hidden = self.rnn(embedded)
         #Use the last time steps output
         last_output = output[:, -1, :]
@@ -114,15 +121,15 @@ class RNNModel(nn.Module):
     
 #set hyper parameters
 
-embedding_dim = 200
-hidden_size =  256
-model = RNNModel(vocab_size, embedding_dim, hidden_size)
+embedding_dim = 150
+hidden_size =  128
+model = RNNModel(vocab_size, embedding_dim, hidden_size).to(device)
 
 #train set up with CrossEntropyLoss function for classification
 criterion = nn.CrossEntropyLoss()
 #Adam optimizer with learning rate 0.001
-optimizer =optim.Adam(model.parameters(), lr=0.001)
-num_epochs = 30
+optimizer =optim.Adam(model.parameters(), lr=0.0005)
+num_epochs = 25
 
 #track losses for plotting
 train_losses=[]
@@ -166,7 +173,7 @@ for epoch in range(num_epochs):
 #Plot loss function 
 plt.figure(figsize=(10,6))
 plt.plot(range(1, num_epochs+1), train_losses, '-b', label='Training loss')
-plt.plot(range(1, num_epochs+1), train_losses, 'r-', label='Validation loss')
+plt.plot(range(1, num_epochs+1), val_losses, 'r-', label='Validation loss')
 plt.title('Training and validation loss over Epochs')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
