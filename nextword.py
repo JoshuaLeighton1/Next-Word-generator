@@ -9,7 +9,7 @@ import string
 
 #Load data corpus
 
-with open('corpus.txt', 'r') as file:
+with open('pg2680.txt', 'r') as file:
     text = file.read()
 
 
@@ -55,7 +55,7 @@ class TextDataSet(Dataset):
     def __len__(self):
         return len(self.sequences)
     
-    def __get_item__(self, idx):
+    def __getitem__(self, idx):
         seq, target = self.sequences[idx]
         return torch.tensor(seq), torch.tensor(target)
 
@@ -132,7 +132,7 @@ def generate_text(model, start_seq, num_words):
         next_word = idx_to_word[next_word_idx]
         generated.append(next_word)
         #Add the next word into current sequence
-        current_seq = current_seq[1:] + next_word
+        current_seq = current_seq[1:] + [next_word]
     
     return ' '.join(generated)
 
