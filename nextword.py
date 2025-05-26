@@ -118,8 +118,28 @@ for epoch in range(num_epochs):
     print(f'Epoch {epoch+1}, Loss: {total_loss/ len(dataloader)}')
 
 #generate text method
+def generate_text(model, start_seq, num_words):
+    model.eval()
+    current_seq = start_seq.copy()
+    generated = current_seq.copy()
+    for _ in range(num_words):
+        seq_tensor = torch.tensor([word_to_idx[word] for word in current_seq]).unsqueeze(0)
+        with torch.no_grad():
+            output = model(seq_tensor)
+        probabilities = torch.softmax(output, dim=1).squeeze()
+        #sample next word
+        next_word_idx = torch.multinomial(probabilities, 1).item()
+        next_word = idx_to_word[next_word_idx]
+        generated.append(next_word)
+        #Add the next word into current sequence
+        current_seq = current_seq[1:] + next_word
+    
+    return ' '.join(generated)
 
- 
+start_seq = ['i', 'like', 'to', 'learn', 'about']
+
+generated_text = generate_text(model, start_seq, 10)
+print(generated_text)
 
 
 
