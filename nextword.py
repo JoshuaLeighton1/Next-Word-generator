@@ -88,6 +88,38 @@ class RNNModel(nn.Module):
         prediction = self.fc(last_output)
         return prediction
     
+#set hyper parameters
+
+embedding_dim = 100
+hidden_size =  128
+model = RNNModel(vocab_size, embedding_dim, hidden_size)
+
+#train with CrossEntropyLoss function for classification
+criterion = nn.CrossEntropyLoss()
+#Adam optimizer with learning rate 0.001
+optimizer =optim.Adam(model.parameters(), lr=0.001)
+num_epochs = 10
+
+for epoch in range(num_epochs):
+    model.train()
+    total_loss = 0
+    for seq, target in dataloader:
+        #reset gradients
+        optimizer.zero_grad()
+        #forward pass
+        output = model(seq)
+        #compute loss
+        loss = criterion(output, target)
+        #Use back progagation 
+        loss.backward()
+        #update weights
+        optimizer.step()
+        total_loss += loss.item()
+    print(f'Epoch {epoch+1}, Loss: {total_loss/ len(dataloader)}')
+
+#generate text method
+
+ 
 
 
 
