@@ -60,3 +60,35 @@ class TextDataSet(Dataset):
         return torch.tensor(seq), torch.tensor(target)
 
 #Create DataLoader for batching 
+
+#pass the sequences_idx array as an arg for the TextDataSet Object
+dataset = TextDataSet(sequences_idx)
+batch_size = 32
+#DataLoader represents an iterable dataset
+dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+#Define the RNN Model
+
+#Module is the base class for all neural networks
+class RNNModel(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, hidden_size):
+        super(RNNModel, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.rnn = nn.RNN(embedding_dim, hidden_size, batch_first=True)
+        self.fc = nn.Linear(hidden_size, vocab_size)
+
+    def forward(self, x):
+        #convert word indices to embeddings
+        embedded = self.embedding(x)
+        #RNN processes the sequence
+        output, hidden = self.rnn(embedded)
+        #Use the last time steps output
+        last_output = output[:, -1, :]
+        #predict the next word
+        prediction = self.fc(last_output)
+        return prediction
+    
+
+
+
+    
