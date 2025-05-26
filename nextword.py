@@ -34,7 +34,6 @@ except Exception as e:
 #remove punctuation and convert to lowercase 
 text = text.translate(str.maketrans('', '', string.punctuation))
 text = text.lower()
-
 #split into words to tokenize
 words = text.split()
 
@@ -117,11 +116,14 @@ criterion = nn.CrossEntropyLoss()
 #Adam optimizer with learning rate 0.001
 optimizer =optim.Adam(model.parameters(), lr=0.001)
 num_epochs = 20
+#track losses for plotting
+epoch_losses=[]
 
 for epoch in range(num_epochs):
     model.train()   
     total_loss = 0
     for seq, target in dataloader:
+        seq, target = seq.to(device), target.to(device)
         #reset gradients
         optimizer.zero_grad()
         #forward pass
@@ -133,15 +135,33 @@ for epoch in range(num_epochs):
         #update weights
         optimizer.step()
         total_loss += loss.item()
-    print(f'Epoch {epoch+1}, Loss: {total_loss/ len(dataloader)}')
+    #calculate average loss to be total loss / length of the dataset iterable
+    avg_loss = total_loss / len(dataloader)
+    epoch_losses.append(avg_loss)
+    print(f'Epoch {epoch+1}, Loss: {avg_loss}')
+
+#Plot loss function 
+plt.figure(figsize=(8,6))
+plt.plot(range(1, num_epochs+1), epoch_losses, '-b', label='Training loss')
+plt.title('Training loss over Epochs')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.grid(True)
+plt.legend()
+plt.savefig('loss_plot.png')
 
 #generate text method
 def generate_text(model, start_seq, num_words):
     model.eval()
     current_seq = start_seq.copy()
     generated = current_seq.copy()
+    #Validate start_seq
+    for word in current_seq:
+        if word not in word_to_idx:
+            raise ValueError(f"Word '{word}' not in vocabulary")
+
     for _ in range(num_words):
-        seq_tensor = torch.tensor([word_to_idx[word] for word in current_seq]).unsqueeze(0)
+        seq_tensor = torch.tensor([word_to_idx[word] for word in current_seq], dtype=torch.long).unsqueeze(0).to(device)
         with torch.no_grad():
             output = model(seq_tensor)
         probabilities = torch.softmax(output, dim=1).squeeze()
@@ -154,10 +174,14 @@ def generate_text(model, start_seq, num_words):
     
     return ' '.join(generated)
 
-start_seq = ['i', 'like', 'to', 'learn', 'about']
 
-generated_text = generate_text(model, start_seq, 10)
-print(generated_text)
+try: 
+    start_seq = ['i', 'like', 'to', 'learn', 'about']
+    generated_text = generate_text(model, start_seq, 10)
+    print(f"generated_text: {generated_text}")
+
+except ValueError as e:
+    print(f"Error: {str(e)}")
 
 
 
