@@ -5,12 +5,30 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import random
 import string
+import matplotlib as plt
+
+
+#set random seed for reproducibility
+torch.manual_seed(42)
+np.random.seed(42)
+random.seed(42)
+
+#check for GPU availability
+device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
+print(f"using device {device}")
+
 
 
 #Load data corpus
+try:
+    with open('pg2680.txt', 'r') as file:
+        text = file.read()
+except FileNotFoundError:
+    raise FileNotFoundError("the file was not found. Please ensure it exists in the working directory")
+except Exception as e:
+    raise Exception(f"Error reading file {str(e)}")
 
-with open('pg2680.txt', 'r') as file:
-    text = file.read()
+
 
 
 #remove punctuation and convert to lowercase 
@@ -98,10 +116,10 @@ model = RNNModel(vocab_size, embedding_dim, hidden_size)
 criterion = nn.CrossEntropyLoss()
 #Adam optimizer with learning rate 0.001
 optimizer =optim.Adam(model.parameters(), lr=0.001)
-num_epochs = 15
+num_epochs = 20
 
 for epoch in range(num_epochs):
-    model.train()
+    model.train()   
     total_loss = 0
     for seq, target in dataloader:
         #reset gradients
