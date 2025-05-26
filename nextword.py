@@ -36,5 +36,27 @@ for i in range(sequence_length, len(words)):
     sequences.append((seq, target))
 
 
+#convert sentences to indices
+sequences_idx=[]
+for seq, target in sequences:
+    #assigns the words index to the seq index
+    seq_idx = [word_to_idx[word] for word in seq]
+    target_idx = word_to_idx[target]
+    #append to sequences array
+    sequences_idx.append((seq_idx, target_idx))
 
 
+# Create a PyTorch dataset
+
+class TextDataSet(Dataset):
+    def __init__(self, sequences):
+        self.sequences = sequences
+
+    def __len__(self):
+        return len(self.sequences)
+    
+    def __get_item__(self, idx):
+        seq, target = self.sequences[idx]
+        return torch.tensor(seq), torch.tensor(target)
+
+#Create DataLoader for batching 
