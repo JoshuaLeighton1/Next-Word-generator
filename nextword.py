@@ -47,7 +47,7 @@ vocab_size = len(vocab)
 #create sequence for training
 
 #number of words in each input sentence
-sequence_length = 12
+sequence_length = 15
 sequences = []
 for i in range(sequence_length, len(words)):
     seq = words[i-sequence_length:i]
@@ -89,7 +89,7 @@ class TextDataSet(Dataset):
 #pass the sequences_idx array as an arg for the TextDataSet Object
 train_dataset = TextDataSet(train_sequences, device)
 val_dataset = TextDataSet(val_sequences, device)
-batch_size = 64 
+batch_size = 32
 #DataLoader represents an iterable dataset
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
@@ -98,10 +98,12 @@ val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
 #Module is the base class for all neural networks
 class RNNModel(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, hidden_size):
+    def __init__(self, vocab_size, embedding_dim, hidden_size, dropout_prob=0.5):
         super(RNNModel, self).__init__()
         #converts word indices to dense vectors of size embedding_dim
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        #add a dropout layer
+        self.dropout = nn.Dropout(p=dropout_prob)
         #processes sequences outputs hidden sstates
         self.rnn = nn.RNN(embedding_dim, hidden_size, batch_first=True)
         #maps final hidden state to vocabulary sized predictions
@@ -111,6 +113,8 @@ class RNNModel(nn.Module):
 
         #shape becomes (batch_size, sequence_length, embedding_dim)
         embedded = self.embedding(x)
+        #apply dropout to embeddings
+        embedded = self.dropout(embedded)
         #RNN processes the sequence and outputs for all time steps and hidden states
         output, hidden = self.rnn(embedded)
         #Use the last time steps output
@@ -123,13 +127,14 @@ class RNNModel(nn.Module):
 
 embedding_dim = 150
 hidden_size =  128
-model = RNNModel(vocab_size, embedding_dim, hidden_size).to(device)
+dropout_prob = 0,5
+model = RNNModel(vocab_size, embedding_dim, hidden_size, dropout_prob=dropout_prob).to(device)
 
 #train set up with CrossEntropyLoss function for classification
 criterion = nn.CrossEntropyLoss()
 #Adam optimizer with learning rate 0.001
-optimizer =optim.Adam(model.parameters(), lr=0.0005)
-num_epochs = 25
+optimizer =optim.Adam(model.parameters(), lr=0.0005, weight_decay=1e-6)
+num_epochs = 30
 
 #track losses for plotting
 train_losses=[]
@@ -192,7 +197,7 @@ def generate_text(model, start_seq, num_words):
             raise ValueError(f"Word '{word}' not in vocabulary")
 
     for _ in range(num_words):
-        seq_tensor = torch.tensor([word_to_idx[word] for word in current_seq], dtype=torch.long).unsqueeze(0).to(device)
+        seq_tensor = torch.tensor([word_to_idx[word] for word in current_seq], dtype=torch.long, device=device).unsqueeze(0)
         with torch.no_grad():
             output = model(seq_tensor)
         probabilities = torch.softmax(output, dim=1).squeeze()
