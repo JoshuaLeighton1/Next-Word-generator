@@ -97,15 +97,15 @@ val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 #Define the RNN Model
 
 #Module is the base class for all neural networks
-class RNNModel(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, hidden_size, dropout_prob=0.5):
-        super(RNNModel, self).__init__()
+class LSTMModel(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, hidden_size, dropout_prob=0.7):
+        super(LSTMModel, self).__init__()
         #converts word indices to dense vectors of size embedding_dim
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         #add a dropout layer
         self.dropout = nn.Dropout(p=dropout_prob)
         #processes sequences outputs hidden sstates
-        self.rnn = nn.RNN(embedding_dim, hidden_size, batch_first=True)
+        self.lstm = nn.LSTM(embedding_dim, hidden_size, batch_first=True)
         #maps final hidden state to vocabulary sized predictions
         self.fc = nn.Linear(hidden_size, vocab_size)
 
@@ -116,7 +116,7 @@ class RNNModel(nn.Module):
         #apply dropout to embeddings
         embedded = self.dropout(embedded)
         #RNN processes the sequence and outputs for all time steps and hidden states
-        output, hidden = self.rnn(embedded)
+        output, (hidden, cell)  = self.lstm(embedded)
         #Use the last time steps output
         last_output = output[:, -1, :]
         #predict the next word
@@ -127,18 +127,26 @@ class RNNModel(nn.Module):
 
 embedding_dim = 150
 hidden_size =  128
-dropout_prob = 0,5
-model = RNNModel(vocab_size, embedding_dim, hidden_size, dropout_prob=dropout_prob).to(device)
+dropout_prob = 0.7
+weight_decay = 1e-4
+learning_rate = 0.0005
+model = LSTMModel(vocab_size, embedding_dim, hidden_size, dropout_prob=dropout_prob).to(device)
 
 #train set up with CrossEntropyLoss function for classification
 criterion = nn.CrossEntropyLoss()
 #Adam optimizer with learning rate 0.001
-optimizer =optim.Adam(model.parameters(), lr=0.0005, weight_decay=1e-6)
+optimizer =optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 num_epochs = 30
+patience=5
+best_val_loss = float('inf')
+patience_counter = 0
+
 
 #track losses for plotting
 train_losses=[]
 val_losses=[]
+
+#Plot loss function in real time
 
 for epoch in range(num_epochs):
     model.train()   
@@ -153,6 +161,7 @@ for epoch in range(num_epochs):
         loss = criterion(output, target)
         #Use back progagation 
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         #update weights
         optimizer.step()
         total_train_loss += loss.item()
@@ -174,11 +183,22 @@ for epoch in range(num_epochs):
 
 
     print(f'Epoch {epoch+1}, Train Loss: {avg_train_loss:.4f}, Validation Loss: {avg_val_loss:.4f}')
+    
+    #early stopping
+    if avg_val_loss < best_val_loss:
+        best_val_loss = avg_val_loss
+        patience_counter = 0
+    else:
+        patience_counter +=1
 
-#Plot loss function 
+    if patience_counter >= patience:
+        print(f"Eearly stopping at epoch: {epoch+1}")
+        break
+
+
 plt.figure(figsize=(10,6))
-plt.plot(range(1, num_epochs+1), train_losses, '-b', label='Training loss')
-plt.plot(range(1, num_epochs+1), val_losses, 'r-', label='Validation loss')
+plt.plot(range(1, len(train_losses)+1), train_losses, '-b', label='Training loss')
+plt.plot(range(1, len(val_losses)+1), val_losses, 'r-', label='Validation loss')
 plt.title('Training and validation loss over Epochs')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
