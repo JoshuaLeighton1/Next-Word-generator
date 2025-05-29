@@ -5,7 +5,8 @@ This project implements a next-word prediction model using a LSTM (Long Short-Te
 ## Features
 
 - LSTM-Based Model: Utilizes a multi-layer LSTM architecture for sequence modeling.
-- Text Preprocessing: Handles text cleaning, vocabiulary building and sequence creation with support for special tokens (<UNK>, <PAD>, <START>, <END>) to help syntactical structure.
+- Text Preprocessing: Handles text cleaning, vocabiulary building and sequence creation with support for special tokens "(< UNK >, < PAD >, < START >, "< END >") 
+to help syntactical structure.
 - Comprehensive Debugging: Text generation includes detailed debugging output to trace model predictions.
 - Device Support: Automatically selects GPU(CUDA/MPS) or CPU based on availability.
 - Evaluation Metrics: Reports test loss and accuracy for model performance assessment.
